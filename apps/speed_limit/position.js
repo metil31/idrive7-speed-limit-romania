@@ -25,7 +25,7 @@
  *     again once that has been back for 15 s;
  *   - a subscribed source that goes quiet for 2 s is read once (its getter), at most every 2 s.
  */
-const { merc, unmerc } = require('./limitpack');
+const { merc, unmerc, groundScale } = require('./limitpack');
 
 const NAV = 'de.bmw.infotainment.navigation.positioning.Positioning';
 const GPS = 'de.bmw.infotainment.GPSData';
@@ -212,19 +212,21 @@ class Position {
     }
 }
 
+const DEMO_WAY = 746230194; // Two-way street in Cluj-Napoca, tagged 50 km/h in both directions.
+const DEMO_SPEED = 45;
+
 /**
- * The PC's demo drive (the emulator and preview set "demo" on; a car never has it): up and down the Tbilisi Bypass
- * Road (OSM way 20647951, 90 km/h) at 70-100 km/h, so the page and the sign can be seen working without a car.
+ * The emulator and preview drive the Cluj-Napoca demo route in both directions at 35-55 km/h.
  * opts.way, opts.speed (the preview's --set demoWay=... demoSpeed=...): another way, a steady speed.
  */
 class DemoDrive {
     constructor(pack, opts) {
-        const o = opts || {}, way = Number(o.way) || 0;
+        const o = opts || {}, way = Number(o.way) || DEMO_WAY;
         this.steady = Number(o.speed) || 0;
         this.pts = [];
         if (!pack) return;
         const ids = [];
-        for (let i = 0; i < pack.count; i++) if (pack.piece(i).way === (way || 20647951)) ids.push(i);
+        for (let i = 0; i < pack.count; i++) if (pack.piece(i).way === way) ids.push(i);
         pack.chain(ids).forEach((i) => {
             const p = pack.points(i);
             for (let k = this.pts.length ? 2 : 0; k < p.length; k += 2) this.pts.push([p[k], p[k + 1]]);
@@ -234,13 +236,14 @@ class DemoDrive {
         this.t0 = Date.now();
     }
 
-    speedKmh(now) { return this.steady || 85 + 15 * Math.sin((now - this.t0) / 9000); }
+    speedKmh(now) { return this.steady || DEMO_SPEED + 10 * Math.sin((now - this.t0) / 9000); }
 
     fix(now) {
         if (this.pts.length < 2) return null;
         const total = this.len[this.len.length - 1];
-        // distance driven (mercator metres; about 1.34 per ground metre here), there and back again
-        let s = ((now - this.t0) / 1000) * ((this.steady || 85) / 3.6) * 1.34 % (2 * total);
+        // Use the route's latitude to convert ground metres into Web Mercator metres.
+        const metresPerSecond = (this.steady || DEMO_SPEED) / 3.6 / groundScale(this.pts[0][1]);
+        let s = ((now - this.t0) / 1000) * metresPerSecond % (2 * total);
         const back = s > total;
         if (back) s = 2 * total - s;
         let i = 1;

@@ -4,6 +4,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 const { LimitPack, F, SRC, merc } = require(path.join(ROOT, 'apps', 'speed_limit', 'limitpack'));
 const { Matcher, limitOf } = require(path.join(ROOT, 'apps', 'speed_limit', 'matcher'));
+const { DemoDrive } = require(path.join(ROOT, 'apps', 'speed_limit', 'position'));
 let failed = 0;
 function check(ok, text) { console.log((ok ? 'ok   ' : 'FAIL ') + text); if (!ok) failed++; }
 function piece(cls, flags, f, b, src) { return { cls, flags, limF: f || 0, limB: b || 0, src: src || 0 }; }
@@ -42,6 +43,22 @@ function at(name, lat, lon, heading, expected) {
 }
 at('Cluj-Napoca, Calea Moților sample', 46.7700, 23.5900, 0, 50);
 at('Otopeni living-street sample', 44.5470, 26.0720, 0, 30);
+
+const demo = new DemoDrive(pack);
+function demoMatch(drive, seconds, way, limit) {
+    const now = drive.t0 + seconds * 1000;
+    const fix = drive.fix(now);
+    if (!fix || fix.source !== 'demo') return null;
+    const r = new Matcher(pack).update(fix, now);
+    return r.state === 'match' && r.way === way && r.limit === limit ? r : null;
+}
+const outbound = demoMatch(demo, 30, 746230194, 50);
+const returning = demoMatch(demo, 105, 746230194, 50);
+check(outbound && returning && outbound.dir === 1 && returning.dir === -1,
+    'default demo matches the Cluj-Napoca route at 50 km/h in both directions');
+const custom = new DemoDrive(pack, { way: 41496744, speed: 35 });
+check(custom.speedKmh(custom.t0) === 35 && demoMatch(custom, 10, 41496744, 50),
+    'demo still accepts a custom way and a steady speed');
 pack.close();
 if (failed) { console.error('\n' + failed + ' failed'); process.exit(1); }
 console.log('\nok');

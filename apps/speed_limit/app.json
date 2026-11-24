@@ -2,7 +2,7 @@
   "id": "speed_limit",
   "title": "Speed Limit România",
   "description": "Limita drumului curent pe instrumentar și HUD, din harta offline OpenStreetMap România. Doar citire.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "vendor": "custom",
   "loggingId": "OASL",
   "iconGlyph": "60",
