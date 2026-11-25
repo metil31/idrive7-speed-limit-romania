@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """pack_sli.py - compile an OpenStreetMap extract into a speed-limit pack for apps/speed_limit (no map, no names).
 
-    python3 kit/tools/pack_sli.py romania-latest.osm.pbf -o apps/speed_limit/romania.pack --region Romania
+    python3 kit/tools/pack_sli.py romania-latest.osm.pbf -o apps/speed_limit/romania.pack \
+        --local-limits kit/tools/romania-local-limits.json
 
 Only what the app needs to tell the limit of the road the car is on: drivable roads as short pieces (their shape,
 class, flags, the limit each way) and a grid to find the pieces near a position. The PBF reader is osm_nav's
@@ -407,6 +408,35 @@ def limits(t):
     return f[0], f[1], b[0], b[1]
 
 
+def apply_local_limits(roads, groups, log):
+    """Apply sourced reductions only while the reviewed OSM segment and tags still match."""
+    pending = {}
+    for group in groups:
+        previous, limit = group['previous'], group['limit']
+        if not 5 <= limit < previous <= 250 or not group['source'].startswith('https://'):
+            raise ValueError('invalid local limit or evidence for ' + group['street'])
+        for wid, first, last in group['ways']:
+            if wid in pending:
+                raise ValueError('duplicate local limit for OSM way %d' % wid)
+            pending[wid] = (group['street'], first, last, previous, limit)
+
+    applied = 0
+    for i, (wid, refs, tags, cls) in enumerate(roads):
+        rule = pending.pop(wid, None)
+        if not rule:
+            continue
+        street, first, last, previous, limit = rule
+        if (tags.get('name') != street or (refs[0], refs[-1]) not in ((first, last), (last, first))
+                or tags.get('maxspeed') != str(previous) or any(k.startswith('maxspeed:') for k in tags)):
+            log('  local limit skipped for way %d: review current geometry or tags' % wid)
+            continue
+        roads[i] = (wid, refs, dict(tags, maxspeed=str(limit)), cls)
+        applied += 1
+    for wid in sorted(pending):
+        log('  local limit skipped: way %d absent' % wid)
+    return applied
+
+
 def camera_direction(v):
     """Degrees (0..359) of a camera's direction=* (degrees or N/NE/...), or 0xFFFF; several or forward/backward: none."""
     v = (v or '').strip().upper()
@@ -757,16 +787,26 @@ def main(argv=None):
     ap.add_argument('pbf')
     ap.add_argument('-o', '--out', required=True)
     ap.add_argument('--region', default='Romania')
+    ap.add_argument('--local-limits', help='reviewed road-segment corrections (JSON)')
     a = ap.parse_args(argv)
+    if a.local_limits and a.region != 'Romania':
+        ap.error('--local-limits requires the Romania extract')
+    groups = []
+    if a.local_limits:
+        with open(a.local_limits, encoding='utf-8') as f:
+            groups = json.load(f)
     log = lambda s: print(s, flush=True)
     t0 = time.time()
     log('reading ' + a.pbf)
     ts = header_timestamp(a.pbf)
     roads, rings, places, coords, cameras = read(a.pbf, log)
+    applied = apply_local_limits(roads, groups, log) if groups else 0
+    log('  verified local limits applied: %d OSM ways' % applied)
     pieces, cells, grid, bbox, stats = compile_pack(roads, rings, places, coords, log)
     data_date = time.strftime('%Y-%m-%d', time.gmtime(ts)) if ts else None
     write(a.out, pieces, cells, grid, bbox, {'region': a.region, 'source': os.path.basename(a.pbf),
-                                              'data': data_date, 'built': time.strftime('%Y-%m-%d')}, cameras)
+                                              'data': data_date, 'built': time.strftime('%Y-%m-%d'),
+                                              'localLimits': applied}, cameras)
     km = stats['km'] or 1
     log('%s: %.1f MB, %d pieces, %.0f km of road (%.0f s)' % (a.out, os.path.getsize(a.out) / 1e6, len(pieces), km,
                                                                time.time() - t0))

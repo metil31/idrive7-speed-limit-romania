@@ -42,7 +42,7 @@ jobs:
           done
           exit 1
       - name: Build the map
-        run: python3 kit/tools/pack_sli.py "$RUNNER_TEMP/osm/romania-latest.osm.pbf" -o "$RUNNER_TEMP/osm/romania.pack" --region Romania
+        run: python3 kit/tools/pack_sli.py "$RUNNER_TEMP/osm/romania-latest.osm.pbf" -o "$RUNNER_TEMP/osm/romania.pack" --region Romania --local-limits kit/tools/romania-local-limits.json
       - name: What changed for a driver
         id: diff
         run: python3 kit/tools/sli_diff.py apps/speed_limit/romania.pack "$RUNNER_TEMP/osm/romania.pack" --github-output "$GITHUB_OUTPUT"

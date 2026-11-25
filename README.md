@@ -6,7 +6,7 @@ Three apps for BMW iDrive 7 head units (MGU), installed through the [MGU Store](
 | :--- | :---: | :---: | :--- |
 | [Spotify](#spotify) | 1.0.32 | Yes | Nothing |
 | [M-Copilot](#m-copilot) | 1.0.35 | Yes | Driving signals, service list, fault memory (read-only) |
-| [Speed Limit România](#speed-limit) | 1.1.1 | No | Position, speed and power state (read-only) |
+| [Speed Limit România](#speed-limit) | 1.1.2 | No | Position, speed and power state (read-only) |
 
 ## Install
 
@@ -77,7 +77,8 @@ No internet, no BMW map, and nothing is sent to the car: it only reads the car's
 - **Speed cameras:** a camera ahead on your road within 400 m adds a pill with the distance to the sign.
 - **Roads without a limit** use Romanian defaults for category A/B vehicles: 50 in settlements, 90 outside,
   100 on European roads, 120 on expressways, 130 on motorways and 20 in living streets. Ramps do not inherit the
-  motorway/expressway limit. Explicit and per-direction OpenStreetMap limits always win.
+  motorway/expressway limit. Explicit and per-direction OpenStreetMap limits take priority over defaults.
+  The map build also includes [documented local corrections](docs/ROMANIA.md#bucurești-și-ilfov) for reviewed segments.
 - **Correct a wrong limit in the car:** on the road, pick its real limit under **This road > Correct its limit**. It
   covers that OpenStreetMap road (both directions, unless the map gives them different limits) and nothing past it,
   is kept by app updates and new maps, and goes by itself once OpenStreetMap has the same limit. **Undo** and
@@ -136,7 +137,7 @@ If the store shows **Online** but an app doesn't, look at the `uplink:` line nea
 - `python3 kit/tools/build.py <app_id>` builds `dist/<app_id>@<version>.mgu`. It needs `oap-sdk`, extracted from your own head unit with `kit/tools/extract_sdk.js`.
 - `node kit/tools/emu.js <app_id>` runs an app in the browser emulator. Add `--car b58` or `--car n63` for a sample car.
 - The tests are in `kit/tools/test_*.js` and run in CI on Node 8.9.4 and 8.16.2, the versions on the head units.
-- Speed Limit's map: `python3 kit/tools/pack_sli.py romania-latest.osm.pbf -o apps/speed_limit/romania.pack --region Romania`
+- Speed Limit's map: `python3 kit/tools/pack_sli.py romania-latest.osm.pbf -o apps/speed_limit/romania.pack --region Romania --local-limits kit/tools/romania-local-limits.json`
   (Geofabrik: `https://download.geofabrik.de/europe/romania/romania-latest.osm.pbf`).
   `node kit/tools/test_speed_limit_ro.js` checks Romanian rules and real map samples; after a build,
   `node kit/tools/test_speed_limit_power.js` checks its wake-ups from start-up to parked. Wrong limits are fixed in

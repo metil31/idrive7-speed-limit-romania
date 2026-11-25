@@ -48,6 +48,25 @@ check(P.limits({'source:maxspeed': 'GE:urban'}), (60, P.SRC_ZONE, 60, P.SRC_ZONE
 check(P.limits({'maxspeed': '50', 'maxspeed:type': 'GE:urban'}), (50, P.SRC_NUM, 50, P.SRC_NUM), 'a number wins over its zone')
 check(P.limits({}), (0, P.SRC_NONE, 0, P.SRC_NONE), 'untagged')
 
+# A sourced correction only applies to the reviewed way and its former base limit.
+local = [{'street': 'Calea Victoriei', 'source': 'https://example.org/notice',
+          'previous': 50, 'limit': 30, 'ways': [[101, 11, 12]]}]
+for refs, tags, want in [
+    ([11, 12], {'name': 'Calea Victoriei', 'maxspeed': '50'}, 1),
+    ([12, 11], {'name': 'Calea Victoriei', 'maxspeed': '50'}, 1),
+    ([11, 13], {'name': 'Calea Victoriei', 'maxspeed': '50'}, 0),
+    ([11, 12], {'name': 'Other street', 'maxspeed': '50'}, 0),
+    ([11, 12], {'name': 'Calea Victoriei', 'maxspeed': '40'}, 0),
+    ([11, 12], {'name': 'Calea Victoriei', 'maxspeed': '30'}, 0),
+    ([11, 12], {'name': 'Calea Victoriei', 'maxspeed': '50', 'maxspeed:forward': '40'}, 0),
+    ([11, 12], {'name': 'Calea Victoriei', 'maxspeed': '50', 'maxspeed:conditional': '20 @ wet'}, 0),
+]:
+    roads = [(101, refs, tags, 3), (102, refs, tags, 3)]
+    got = P.apply_local_limits(roads, local, lambda _: None)
+    check((got, roads[0][2]['maxspeed'], roads[1][2]['maxspeed']),
+          (want, '30' if want else tags['maxspeed'], tags['maxspeed']),
+          'sourced correction respects geometry, existing tags and neighbouring ways: %r %r' % (refs, tags))
+
 # one-way
 check(P.oneway_of({'oneway': 'yes'}, 3), (1, False), 'oneway=yes')
 check(P.oneway_of({'oneway': '-1'}, 3), (-1, False), 'oneway=-1')

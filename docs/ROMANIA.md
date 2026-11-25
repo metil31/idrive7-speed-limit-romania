@@ -12,6 +12,16 @@ Acest fork înlocuiește aplicația `speed_limit` din sursa originală cu o hart
 
 Valorile implicite sunt pentru autoturisme categoria A/B, în condiții normale. Indicatoarele, restricțiile temporare, vremea și regulile speciale au întotdeauna prioritate.
 
+## București și Ilfov
+
+Harta folosește extractul Geofabrik din 24 noiembrie 2026. Pe Calea Victoriei, 13 segmente pe care OpenStreetMap încă le marca la 50 km/h au fost corectate la 30 km/h. Alte trei segmente de pe arteră aveau deja 30 km/h în OSM. [Comunicatul Brigăzii Rutiere din 11 aprilie 2025](https://agerpres.ro/comunicate/2025/04/11/comunicat-de-presa---brigada-rutiera--1439889)
+
+[Lista de corecții](../kit/tools/romania-local-limits.json) se aplică la compilarea hărții. Fiecare intrare identifică segmentul OSM prin ID și nodurile din capete. Dacă se schimbă segmentul sau eticheta de viteză, compilatorul sare peste corecție și o semnalează pentru verificare.
+
+Pe Strada Cantonului din Corbeanca există deja în OSM un segment de 30 km/h. Limita pentru porțiunea alăturată necesită confirmare în teren. În București, anunțul pentru zona centrală din mai 2025 enumeră perimetre, iar pentru strada Prevederii documentele confirmă un indicator lângă școală. Acestea sunt piste pentru o verificare pe segmente. [Zona centrală](https://www.radioromania.ro/stiri-locale/bucuresti-restrictie-de-viteza-la-30-km-h-in-centrul-orasului-id73119.html) · [Strada Prevederii](https://avp.ro/index.php/domenii-de-activitate/domeniul-apararea-protectia-si-promovarea-drepturilor-copilului-avocatul-copilului/competente/)
+
+Am comparat și cu [Overture Transportation](https://docs.overturemaps.org/guides/transportation/), versiunea 2026-11-18.0. Toate segmentele cu limită din eșantionul pentru Calea Victoriei și Strada Cantonului indicau OpenStreetMap ca sursă. Comunicatul Brigăzii Rutiere furnizează confirmarea independentă pentru Calea Victoriei.
+
 ## MGU Store
 
 1. Deschide **MGU Store → Settings → Add source**, introdu `metil31/idrive7-speed-limit-romania` și alege ramura `main`.
@@ -23,7 +33,7 @@ Valorile implicite sunt pentru autoturisme categoria A/B, în condiții normale.
 ## Build și teste
 
 ```text
-python kit/tools/pack_sli.py romania-latest.osm.pbf -o apps/speed_limit/romania.pack --region Romania
+python kit/tools/pack_sli.py romania-latest.osm.pbf -o apps/speed_limit/romania.pack --region Romania --local-limits kit/tools/romania-local-limits.json
 python kit/tools/test_pack_sli.py
 node kit/tools/test_speed_limit_ro.js
 node kit/tools/test_speed_limit_outputs.js

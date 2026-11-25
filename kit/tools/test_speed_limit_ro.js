@@ -35,14 +35,17 @@ check(classes[0] > 0 && classes[1] > 0 && classes[6] > 0 && classes[7] > 0,
     'pack has motorways, expressways, residential and living-street roads');
 
 // Two reproducible Romanian city examples from this exact pack.
-function at(name, lat, lon, heading, expected) {
+function at(name, lat, lon, heading, expected, way) {
     const xy = merc(lat, lon), m = new Matcher(pack, { radius: 40 });
     const r = m.update({ x: xy[0], y: xy[1], heading, speed: 40 }, 1);
-    check(r.state === 'match' && r.limit === expected,
+    check(r.state === 'match' && r.limit === expected && (!way || r.way === way),
         name + ': matched OSM way ' + r.way + ', ' + r.limit + ' km/h' + (r.inferred ? ' inferred' : ' tagged'));
 }
 at('Cluj-Napoca, Calea Moților sample', 46.7700, 23.5900, 0, 50);
 at('Otopeni living-street sample', 44.5470, 26.0720, 0, 30);
+at('Calea Victoriei, northern section', 44.4466283, 26.0902792, 155, 30, 4865914);
+at('Calea Victoriei, southern section', 44.4312338, 26.0968527, 189, 30, 231242706);
+at('Corbeanca, existing 30 km/h section on Strada Cantonului', 44.5869402, 26.0309329, 342, 30, 27930712);
 
 const demo = new DemoDrive(pack);
 function demoMatch(drive, seconds, way, limit) {
